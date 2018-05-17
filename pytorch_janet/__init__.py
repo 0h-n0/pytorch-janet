@@ -1,3 +1,3 @@
 __version__ = '1.0.0'
 
-from .nn import JANET
+from .module import JANET

@@ -8,9 +8,18 @@ from torch.nn.utils.rnn import PackedSequence
 from .functional import AutogradRNN
 
 class JANET(torch.nn.Module):
-    def __init__(self, input_size, hidden_size,
-                     num_layers=1, bias=True, batch_first=False,
-                     dropout=0, bidirectional=False):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers=1,
+                 Tmax=None,
+                 *,
+                 bias=True,
+                 batch_first=False,
+                 dropout=0,
+                 bidirectional=False,
+                 ):
+        
         super(JANET, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -20,6 +29,7 @@ class JANET(torch.nn.Module):
         self.dropout = dropout
         self.dropout_state = {}
         self.bidirectional = bidirectional
+        self.Tmax = Tmax
         num_directions = 2 if bidirectional else 1
             
         if not isinstance(dropout, numbers.Number) or not 0 <= dropout <= 1 or \
@@ -33,7 +43,7 @@ class JANET(torch.nn.Module):
                           "num_layers greater than 1, but got dropout={} and "
                           "num_layers={}".format(dropout, num_layers))
                 
-        gate_size = 3 * hidden_size
+        gate_size = 2 * hidden_size
         
         self._all_weights = []
         for layer in range(num_layers):
@@ -57,6 +67,28 @@ class JANET(torch.nn.Module):
                 self._all_weights.append(param_names)
     
         self.reset_parameters()
+        
+        if Tmax is not None:
+            self.set_chrono_init(Tmax)
+        else:
+            self.set_forget_gate_1()
+
+    def set_forget_gate_1(self):
+        for name, p in self.named_parameters():
+            if 'bias' in name:
+                n = p.nelement()
+                hidden_size = n // 2            
+                p.data.fill_(0)
+                p.data[0: hidden_size].fill_(1)
+                
+    def set_chrono_init(self, Tmax, Tmin=1):
+        for name, p in self.named_parameters():
+            if 'bias' in name:
+                n = p.nelement()
+                hidden_size = n // 2            
+                p.data.fill_(0)
+                p.data[0: hidden_size] = \
+                    torch.log(torch.nn.init.uniform_(p.data[0: hidden_size], Tmin, Tmax - 1))
         
     def forward(self, input, hx=None):
         is_packed = isinstance(input, PackedSequence)
@@ -134,6 +166,8 @@ class JANET(torch.nn.Module):
             s += ', dropout={dropout}'
         if self.bidirectional is not False:
             s += ', bidirectional={bidirectional}'
+        if self.Tmax is not None:
+            s += ', Tmax={self.Tmax: chrono_init}'
         return s.format(**self.__dict__)
 
     def __setstate__(self, d):
@@ -164,6 +198,4 @@ if __name__ == '__main__':
     j = JANET(10, 10, 2)
     print(j)    
     a = torch.randn(3, 5, 10)
-    j(a)
-
-    print('a')
+    x = j(a)

@@ -1,5 +1,7 @@
 # JANET (Pytorch implementation)
 
+JANET has only forget gate.
+
 
 ### Dependency
 
@@ -10,9 +12,15 @@
 ```python
 from pytorch_janet import JANET
 
-model = JANET(...)
+# if you want
+model = JANET(5, 10, 2)
 
 ```
+
+### TODO
+
+* Not work bidrectional
+* Not reproduce the results with chrono initialization.
 
 
 ### Tensorflow implementation
@@ -21,7 +29,7 @@ model = JANET(...)
 
 ### Reference
 
-* https://arxiv.org/abs/1804.11188
+* https://arxiv.org/abs/1804.04849
 
 ### Code Reference
 
