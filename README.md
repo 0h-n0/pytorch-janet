@@ -12,7 +12,6 @@ JANET has only forget gate.
 ```python
 from pytorch_janet import JANET
 
-# if you want
 model = JANET(5, 10, 2)
 
 ```
